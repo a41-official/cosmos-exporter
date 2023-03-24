@@ -27,34 +27,17 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 
 	address := r.URL.Query().Get("address")
 
-	votePenaltyMissCount := prometheus.NewCounter(
+	votePenaltyCount := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name:        "vote_penalty_miss_count",
+			Name:        "cosmos_sei_oracle_vote_penalty_count",
 			Help:        "Vote penalty miss count",
 			ConstLabels: ConstLabels,
 		},
-	)
-
-	votePenaltyAbstainCount := prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name:        "vote_penalty_abstain_count",
-			Help:        "Vote penalty abstain count",
-			ConstLabels: ConstLabels,
-		},
-	)
-
-	votePenaltySuccessCount := prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name:        "vote_penalty_success_count",
-			Help:        "Vote penalty success count",
-			ConstLabels: ConstLabels,
-		},
+		[]string{"type"},
 	)
 
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(votePenaltyMissCount)
-	registry.MustRegister(votePenaltyAbstainCount)
-	registry.MustRegister(votePenaltySuccessCount)
+	registry.MustRegister(votePenaltyCount)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -99,9 +82,9 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 		abstainCount, _ := strconv.ParseFloat(data["vote_penalty_counter"].AbstainCount, 64)
 		successCount, _ := strconv.ParseFloat(data["vote_penalty_counter"].SuccessCount, 64)
 
-		votePenaltyMissCount.Add(missCount)
-		votePenaltyAbstainCount.Add(abstainCount)
-		votePenaltySuccessCount.Add(successCount)
+		votePenaltyCount.WithLabelValues("miss").Add(missCount)
+		votePenaltyCount.WithLabelValues("abstain").Add(abstainCount)
+		votePenaltyCount.WithLabelValues("success").Add(successCount)
 
 	}()
 	wg.Wait()
