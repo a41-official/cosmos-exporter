@@ -13,9 +13,9 @@ import (
 )
 
 type votePenaltyCounter struct {
-	missCount    float64 `json:"miss_count"`
-	abstainCount float64 `json:"abstain_count"`
-	successCount float64 `json:"success_count"`
+	MissCount    float64 `json:"miss_count"`
+	AbstainCount float64 `json:"abstain_count"`
+	SuccessCount float64 `json:"success_count"`
 }
 
 func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string) {
@@ -57,11 +57,14 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 	registry.MustRegister(votePenaltySuccessCount)
 
 	var wg sync.WaitGroup
+	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
 		sublogger.Debug().Msg("Started querying oracle feeder metrics")
 		queryStart := time.Now()
+		fmt.Println("address: ", address)
+		fmt.Println("ApiAddress: ", ApiAddress)
 
 		response, err := http.Get(ApiAddress + "/sei-protocol/sei-chain/oracle/validators/" + address + "/vote_penalty_counter")
 		if err != nil {
@@ -70,27 +73,39 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 				Msg("Could not get oracle feeder metrics")
 			return
 		}
+		defer response.Body.Close()
+
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			sublogger.Error().
+				Err(err).
+				Msg("Could not parse oracle feeder metrics")
+			return
+		}
 
 		fmt.Println(response.StatusCode)
-		fmt.Println(response.Body)
+		fmt.Println(string(body))
 
-		respBytes, _ := ioutil.ReadAll(response.Body)
+		var data map[string]votePenaltyCounter
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			fmt.Println("Error decoding JSON: ", err)
+			return
+		}
 
-		fmt.Println(respBytes)
-		var respBody votePenaltyCounter
-		json.Unmarshal(respBytes, &respBody)
+		fmt.Println(data)
 
 		sublogger.Debug().
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying oracle feeder metrics")
 
-		fmt.Println(respBody.missCount)
-		fmt.Println(respBody.abstainCount)
-		fmt.Println(respBody.successCount)
+		fmt.Println(data["vote_penalty_counter"].MissCount)
+		fmt.Println(data["vote_penalty_counter"].AbstainCount)
+		fmt.Println(data["vote_penalty_counter"].SuccessCount)
 
-		votePenaltyMissCount.Add(respBody.missCount)
-		votePenaltyAbstainCount.Add(respBody.abstainCount)
-		votePenaltySuccessCount.Add(respBody.successCount)
+		votePenaltyMissCount.Add(data["vote_penalty_counter"].MissCount)
+		votePenaltyAbstainCount.Add(data["vote_penalty_counter"].AbstainCount)
+		votePenaltySuccessCount.Add(data["vote_penalty_counter"].SuccessCount)
 
 	}()
 	wg.Wait()
