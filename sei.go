@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -70,7 +71,12 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 			return
 		}
 
+		fmt.Println(response.StatusCode)
+		fmt.Println(response.Body)
+
 		respBytes, _ := ioutil.ReadAll(response.Body)
+
+		fmt.Println(respBytes)
 		var respBody votePenaltyCounter
 		json.Unmarshal(respBytes, &respBody)
 
@@ -78,12 +84,15 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying oracle feeder metrics")
 
+		fmt.Println(respBody.missCount)
+		fmt.Println(respBody.abstainCount)
+		fmt.Println(respBody.successCount)
+
 		votePenaltyMissCount.Add(respBody.missCount)
 		votePenaltyAbstainCount.Add(respBody.abstainCount)
 		votePenaltySuccessCount.Add(respBody.successCount)
 
 	}()
-	wg.Add(1)
 	wg.Wait()
 
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
