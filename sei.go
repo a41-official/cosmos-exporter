@@ -12,9 +12,9 @@ import (
 )
 
 type votePenaltyCounter struct {
-	missCount    int `json:"miss_count"`
-	abstainCount int `json:"abstain_count"`
-	successCount int `json:"success_count"`
+	missCount    float64 `json:"miss_count"`
+	abstainCount float64 `json:"abstain_count"`
+	successCount float64 `json:"success_count"`
 }
 
 func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string) {
@@ -78,9 +78,9 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying oracle feeder metrics")
 
-		votePenaltyMissCount(respBody.missCount)
-		votePenaltyAbstainCount(respBody.abstainCount)
-		votePenaltySuccessCount(respBody.successCount)
+		votePenaltyMissCount.Add(respBody.missCount)
+		votePenaltyAbstainCount.Add(respBody.abstainCount)
+		votePenaltySuccessCount.Add(respBody.successCount)
 
 	}()
 	wg.Add(1)
