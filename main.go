@@ -27,6 +27,7 @@ var (
 	LogLevel      string
 	JsonOutput    bool
 	Limit         uint64
+	ApiAddress    string
 
 	Prefix                    string
 	AccountPrefix             string
@@ -141,6 +142,7 @@ func Execute(cmd *cobra.Command, args []string) {
 		Str("--listen-address", ListenAddress).
 		Str("--node", NodeAddress).
 		Str("--log-level", LogLevel).
+		Str("--api-address", ApiAddress).
 		Msg("Started with following parameters")
 
 	config := sdk.GetConfig()
@@ -178,6 +180,10 @@ func Execute(cmd *cobra.Command, args []string) {
 
 	http.HandleFunc("/metrics/general", func(w http.ResponseWriter, r *http.Request) {
 		GeneralHandler(w, r, grpcConn)
+	})
+
+	http.HandleFunc("/metrics/sei", func(w http.ResponseWriter, r *http.Request) {
+		SeiMetricHandler(w, r, ApiAddress)
 	})
 
 	log.Info().Str("address", ListenAddress).Msg("Listening")
@@ -300,6 +306,9 @@ func main() {
 	rootCmd.PersistentFlags().StringVar(&ValidatorPubkeyPrefix, "bech-validator-pubkey-prefix", "", "Bech32 pubkey validator prefix")
 	rootCmd.PersistentFlags().StringVar(&ConsensusNodePrefix, "bech-consensus-node-prefix", "", "Bech32 consensus node prefix")
 	rootCmd.PersistentFlags().StringVar(&ConsensusNodePubkeyPrefix, "bech-consensus-node-pubkey-prefix", "", "Bech32 pubkey consensus node prefix")
+
+	// API Address (for sei)
+	rootCmd.PersistentFlags().StringVar(&ApiAddress, "api-address", "http://localhost:1317", "API Address")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")
