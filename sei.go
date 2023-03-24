@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -64,8 +63,6 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 		defer wg.Done()
 		sublogger.Debug().Msg("Started querying oracle feeder metrics")
 		queryStart := time.Now()
-		fmt.Println("address: ", address)
-		fmt.Println("ApiAddress: ", ApiAddress)
 
 		response, err := http.Get(ApiAddress + "/sei-protocol/sei-chain/oracle/validators/" + address + "/vote_penalty_counter")
 		if err != nil {
@@ -74,9 +71,10 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 				Msg("Could not get oracle feeder metrics")
 			return
 		}
-		defer response.Body.Close()
 
 		body, err := ioutil.ReadAll(response.Body)
+		defer response.Body.Close()
+
 		if err != nil {
 			sublogger.Error().
 				Err(err).
@@ -84,33 +82,22 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 			return
 		}
 
-		fmt.Println(response.StatusCode)
-		fmt.Println(string(body))
-
 		var data map[string]votePenaltyCounter
 		err = json.Unmarshal(body, &data)
 		if err != nil {
-			fmt.Println("Error decoding JSON: ", err)
+			sublogger.Error().
+				Err(err).
+				Msg("Error decoding JSON")
 			return
 		}
-
-		fmt.Println(data)
 
 		sublogger.Debug().
 			Float64("request-time", time.Since(queryStart).Seconds()).
 			Msg("Finished querying oracle feeder metrics")
 
-		fmt.Println(data["vote_penalty_counter"].MissCount)
-		fmt.Println(data["vote_penalty_counter"].AbstainCount)
-		fmt.Println(data["vote_penalty_counter"].SuccessCount)
-
 		missCount, _ := strconv.ParseFloat(data["vote_penalty_counter"].MissCount, 64)
 		abstainCount, _ := strconv.ParseFloat(data["vote_penalty_counter"].AbstainCount, 64)
 		successCount, _ := strconv.ParseFloat(data["vote_penalty_counter"].SuccessCount, 64)
-
-		fmt.Println(missCount)
-		fmt.Println(abstainCount)
-		fmt.Println(successCount)
 
 		votePenaltyMissCount.Add(missCount)
 		votePenaltyAbstainCount.Add(abstainCount)
