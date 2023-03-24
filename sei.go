@@ -36,16 +36,16 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 
 	votePenaltyAbstainCount := prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name:        "vote_penalty_miss_count",
-			Help:        "Vote penalty miss count",
+			Name:        "vote_penalty_abstain_count",
+			Help:        "Vote penalty abstain count",
 			ConstLabels: ConstLabels,
 		},
 	)
 
 	votePenaltySuccessCount := prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name:        "vote_penalty_miss_count",
-			Help:        "Vote penalty miss count",
+			Name:        "vote_penalty_success_count",
+			Help:        "Vote penalty success count",
 			ConstLabels: ConstLabels,
 		},
 	)
