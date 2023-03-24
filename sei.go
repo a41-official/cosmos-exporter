@@ -7,16 +7,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"io/ioutil"
-	"math/big"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
 
 type votePenaltyCounter struct {
-	MissCount    *big.Int `json:"miss_count"`
-	AbstainCount *big.Int `json:"abstain_count"`
-	SuccessCount *big.Int `json:"success_count"`
+	MissCount    string `json:"miss_count"`
+	AbstainCount string `json:"abstain_count"`
+	SuccessCount string `json:"success_count"`
 }
 
 func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string) {
@@ -104,9 +104,9 @@ func SeiMetricHandler(w http.ResponseWriter, r *http.Request, ApiAddress string)
 		fmt.Println(data["vote_penalty_counter"].AbstainCount)
 		fmt.Println(data["vote_penalty_counter"].SuccessCount)
 
-		missCount, _ := new(big.Float).SetInt(data["vote_penalty_counter"].MissCount).Float64()
-		abstainCount, _ := new(big.Float).SetInt(data["vote_penalty_counter"].AbstainCount).Float64()
-		successCount, _ := new(big.Float).SetInt(data["vote_penalty_counter"].SuccessCount).Float64()
+		missCount, _ := strconv.ParseFloat(data["vote_penalty_counter"].MissCount, 64)
+		abstainCount, _ := strconv.ParseFloat(data["vote_penalty_counter"].AbstainCount, 64)
+		successCount, _ := strconv.ParseFloat(data["vote_penalty_counter"].SuccessCount, 64)
 
 		fmt.Println(missCount)
 		fmt.Println(abstainCount)
