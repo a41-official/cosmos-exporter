@@ -191,15 +191,6 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 		Float64("request-time", time.Since(validatorQueryStart).Seconds()).
 		Msg("Finished querying validator")
 
-	defer func() {
-		r := recover()
-		if r != nil {
-			sublogger.
-				Error().
-				Msgf("Could not parse a validator info: %s", err)
-		}
-	}()
-
 	if value, err := strconv.ParseFloat(validator.Validator.Tokens.String(), 64); err != nil {
 		sublogger.Error().
 			Str("address", address).
