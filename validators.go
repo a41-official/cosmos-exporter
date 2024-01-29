@@ -220,6 +220,15 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		Int("validatorsLength", len(validators)).
 		Msg("Validators info")
 
+	defer func() {
+		r := recover()
+		if r != nil {
+			sublogger.
+				Error().
+				Msgf("Could not parse validators infos: %s", err)
+		}
+	}()
+
 	for index, validator := range validators {
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 		rate, err := strconv.ParseFloat(validator.Commission.CommissionRates.Rate.String(), 64)
