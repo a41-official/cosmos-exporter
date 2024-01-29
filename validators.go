@@ -221,14 +221,24 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		Msg("Validators info")
 
 	for index, validator := range validators {
-		labelsAddressMoniker := prometheus.Labels{
-			"address": validator.OperatorAddress,
-			"moniker": validator.Description.Moniker,
-		}
-		labelsAddressMonikerDenom := prometheus.Labels{
+		// test labels parsing properly
+		_, err := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "cosmos_validators_delegator_shares",
+				Help:        "Delegator shares of the Cosmos-based blockchain validator",
+				ConstLabels: ConstLabels,
+			},
+			[]string{"address", "moniker", "denom"},
+		).GetMetricWith(prometheus.Labels{
 			"address": validator.OperatorAddress,
 			"moniker": validator.Description.Moniker,
 			"denom":   Denom,
+		})
+		if err != nil {
+			log.Error().
+				Err(err).
+				Msg("Inconsistent metric labels")
+			continue
 		}
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
@@ -239,24 +249,16 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 				Str("address", validator.OperatorAddress).
 				Msg("Could not get commission")
 		} else {
-			commissionGauge, err := validatorsCommissionGauge.GetMetricWith(labelsAddressMoniker)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Msg("Inconsistent metric labels")
-			} else {
-				commissionGauge.Set(rate)
-			}
+			validatorsCommissionGauge.With(prometheus.Labels{
+				"address": validator.OperatorAddress,
+				"moniker": validator.Description.Moniker,
+			}).Set(rate)
 		}
 
-		statusGauge, err := validatorsStatusGauge.GetMetricWith(labelsAddressMoniker)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("Inconsistent metric labels")
-		} else {
-			statusGauge.Set(float64(validator.Status))
-		}
+		validatorsStatusGauge.With(prometheus.Labels{
+			"address": validator.OperatorAddress,
+			"moniker": validator.Description.Moniker,
+		}).Set(float64(validator.Status))
 
 		// golang doesn't have a ternary operator, so we have to stick with this ugly solution
 		var jailed float64
@@ -267,14 +269,10 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 			jailed = 0
 		}
 
-		jailedGauge, err := validatorsJailedGauge.GetMetricWith(labelsAddressMoniker)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("Inconsistent metric labels")
-		} else {
-			jailedGauge.Set(jailed)
-		}
+		validatorsJailedGauge.With(prometheus.Labels{
+			"address": validator.OperatorAddress,
+			"moniker": validator.Description.Moniker,
+		}).Set(jailed)
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 		if value, err := strconv.ParseFloat(validator.Tokens.String(), 64); err != nil {
@@ -283,14 +281,11 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 				Err(err).
 				Msg("Could not parse delegator tokens")
 		} else {
-			tokensGauge, err := validatorsTokensGauge.GetMetricWith(labelsAddressMonikerDenom)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Msg("Inconsistent metric labels")
-			} else {
-				tokensGauge.Set(value / DenomCoefficient) // a better way to do this is using math/big Div then checking IsInt64
-			}
+			validatorsTokensGauge.With(prometheus.Labels{
+				"address": validator.OperatorAddress,
+				"moniker": validator.Description.Moniker,
+				"denom":   Denom,
+			}).Set(value / DenomCoefficient) // a better way to do this is using math/big Div then checking IsInt64
 		}
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
@@ -300,14 +295,11 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 				Err(err).
 				Msg("Could not parse delegator shares")
 		} else {
-			delegatorSharesGauge, err := validatorsDelegatorSharesGauge.GetMetricWith(labelsAddressMonikerDenom)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Msg("Inconsistent metric labels")
-			} else {
-				delegatorSharesGauge.Set(value / DenomCoefficient)
-			}
+			validatorsDelegatorSharesGauge.With(prometheus.Labels{
+				"address": validator.OperatorAddress,
+				"moniker": validator.Description.Moniker,
+				"denom":   Denom,
+			}).Set(value / DenomCoefficient)
 		}
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
@@ -317,14 +309,11 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 				Err(err).
 				Msg("Could not parse validator min self delegation")
 		} else {
-			minSelfDelegationGauge, err := validatorsMinSelfDelegationGauge.GetMetricWith(labelsAddressMonikerDenom)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Msg("Inconsistent metric labels")
-			} else {
-				minSelfDelegationGauge.Set(value / DenomCoefficient)
-			}
+			validatorsMinSelfDelegationGauge.With(prometheus.Labels{
+				"address": validator.OperatorAddress,
+				"moniker": validator.Description.Moniker,
+				"denom":   Denom,
+			}).Set(value / DenomCoefficient)
 		}
 
 		err = validator.UnpackInterfaces(interfaceRegistry) // Unpack interfaces, to populate the Anys' cached values
@@ -362,28 +351,20 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		}
 
 		if validator.Status == stakingtypes.Bonded {
-			missedBlocksGauge, err := validatorsMissedBlocksGauge.GetMetricWith(labelsAddressMoniker)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Msg("Inconsistent metric labels")
-			} else {
-				missedBlocksGauge.Set(float64(signingInfo.MissedBlocksCounter))
-			}
+			validatorsMissedBlocksGauge.With(prometheus.Labels{
+				"address": validator.OperatorAddress,
+				"moniker": validator.Description.Moniker,
+			}).Set(float64(signingInfo.MissedBlocksCounter))
 		} else {
 			sublogger.Trace().
 				Str("address", validator.OperatorAddress).
 				Msg("Validator is not active, not returning missed blocks amount.")
 		}
 
-		rankGauge, err := validatorsRankGauge.GetMetricWith(labelsAddressMoniker)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Msg("Inconsistent metric labels")
-		} else {
-			rankGauge.Set(float64(index + 1))
-		}
+		validatorsRankGauge.With(prometheus.Labels{
+			"address": validator.OperatorAddress,
+			"moniker": validator.Description.Moniker,
+		}).Set(float64(index + 1))
 
 		if validatorSetLength != 0 {
 			// golang doesn't have a ternary operator, so we have to stick with this ugly solution
@@ -395,14 +376,10 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 				active = 0
 			}
 
-			isActiveGauge, err := validatorsIsActiveGauge.GetMetricWith(labelsAddressMoniker)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Msg("Inconsistent metric labels")
-			} else {
-				isActiveGauge.Set(active)
-			}
+			validatorsIsActiveGauge.With(prometheus.Labels{
+				"address": validator.OperatorAddress,
+				"moniker": validator.Description.Moniker,
+			}).Set(active)
 		}
 	}
 
