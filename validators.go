@@ -221,6 +221,26 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		Msg("Validators info")
 
 	for index, validator := range validators {
+		// test labels parsing properly
+		_, err := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name:        "cosmos_validators_delegator_shares",
+				Help:        "Delegator shares of the Cosmos-based blockchain validator",
+				ConstLabels: ConstLabels,
+			},
+			[]string{"address", "moniker", "denom"},
+		).GetMetricWith(prometheus.Labels{
+			"address": validator.OperatorAddress,
+			"moniker": validator.Description.Moniker,
+			"denom":   Denom,
+		})
+		if err != nil {
+			log.Error().
+				Err(err).
+				Msg("Inconsistent metric labels")
+			continue
+		}
+
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
 		rate, err := strconv.ParseFloat(validator.Commission.CommissionRates.Rate.String(), 64)
 		if err != nil {
@@ -248,6 +268,7 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		} else {
 			jailed = 0
 		}
+
 		validatorsJailedGauge.With(prometheus.Labels{
 			"address": validator.OperatorAddress,
 			"moniker": validator.Description.Moniker,
