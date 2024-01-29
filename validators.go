@@ -225,7 +225,7 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		if r != nil {
 			sublogger.
 				Error().
-				Msgf("Could not parse validators infos: %s", err)
+				Msgf("Could not parse validators infos: %s", r)
 		}
 	}()
 
