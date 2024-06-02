@@ -191,7 +191,7 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 		Float64("request-time", time.Since(validatorQueryStart).Seconds()).
 		Msg("Finished querying validator")
 
-	if value, err := strconv.ParseFloat(validator.Validator.Tokens.String(), 64); err != nil {
+	if value, err := getInitBalance(validator.Validator.Tokens); err != nil {
 		sublogger.Error().
 			Str("address", address).
 			Err(err).
@@ -205,7 +205,7 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 	}
 
 	// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
-	if value, err := strconv.ParseFloat(validator.Validator.DelegatorShares.String(), 64); err != nil {
+	if value, err := getDelegatorShare(validator.Validator); err != nil {
 		sublogger.Error().
 			Str("address", address).
 			Err(err).
@@ -263,7 +263,7 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 		stakingClient := stakingtypes.NewQueryClient(grpcConn)
 		stakingRes, err := stakingClient.ValidatorDelegations(
 			context.Background(),
-			&stakingtypes.QueryValidatorDelegationsRequest{ValidatorAddr: myAddress.String()},
+			&stakingtypes.QueryValidatorDelegationsRequest{ValidatorAddr: myAddress.String(), Pagination: &querytypes.PageRequest{Limit: 100}}, // TODO: remove limit. Temporary set limit 100 to avoid ValuePerByte error.
 		)
 		if err != nil {
 			sublogger.Error().
@@ -415,7 +415,7 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 		for _, unbonding := range stakingRes.UnbondingResponses {
 			var sum float64 = 0
 			for _, entry := range unbonding.Entries {
-				value, err := strconv.ParseFloat(entry.Balance.String(), 64)
+				value, err := getInitBalance(entry.Balance)
 				if err != nil {
 					log.Error().
 						Err(err).
@@ -465,7 +465,7 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 		for _, redelegation := range stakingRes.RedelegationResponses {
 			var sum float64 = 0
 			for _, entry := range redelegation.Entries {
-				value, err := strconv.ParseFloat(entry.Balance.String(), 64)
+				value, err := getInitBalance(entry.Balance)
 				if err != nil {
 					log.Error().
 						Err(err).
@@ -578,8 +578,8 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 
 		// sorting by delegator shares to display rankings
 		sort.Slice(validators, func(i, j int) bool {
-			firstShares, firstErr := strconv.ParseFloat(validators[i].DelegatorShares.String(), 64)
-			secondShares, secondErr := strconv.ParseFloat(validators[j].DelegatorShares.String(), 64)
+			firstShares, firstErr := getDelegatorShare(validators[i])
+			secondShares, secondErr := getDelegatorShare(validators[j])
 
 			if !validators[i].IsBonded() && validators[j].IsBonded() {
 				return false

@@ -285,7 +285,7 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		}
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
-		if value, err := strconv.ParseFloat(validator.DelegatorShares.String(), 64); err != nil {
+		if value, err := getDelegatorShare(validator); err != nil {
 			sublogger.Error().
 				Str("address", validator.OperatorAddress).
 				Err(err).

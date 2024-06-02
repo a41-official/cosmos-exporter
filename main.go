@@ -6,10 +6,12 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 
 	tmrpc "github.com/cometbft/cometbft/rpc/client/http"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	stakingtypes "github.com/initia-labs/initia/x/mstaking/types"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -304,4 +306,25 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("Could not start application")
 	}
+}
+
+func getDelegatorShare(validator stakingtypes.Validator) (float64, error) {
+	for _, delegatorShare := range validator.DelegatorShares {
+		if delegatorShare.Denom == Denom {
+			value, err := strconv.ParseFloat(delegatorShare.Amount.String(), 64)
+			return value, err
+		}
+	}
+
+	return 0, nil
+}
+
+func getInitBalance(balance sdk.Coins) (float64, error) {
+	for _, coin := range balance {
+		if coin.Denom == Denom {
+			return strconv.ParseFloat(coin.Amount.String(), 64)
+		}
+	}
+
+	return 0, nil
 }

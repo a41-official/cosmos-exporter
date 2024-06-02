@@ -10,8 +10,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
+	stakingtypes "github.com/initia-labs/initia/x/mstaking/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
@@ -158,7 +158,7 @@ func WalletHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Client
 
 		for _, delegation := range stakingRes.DelegationResponses {
 			// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
-			if value, err := strconv.ParseFloat(delegation.Balance.Amount.String(), 64); err != nil {
+			if value, err := getInitBalance(delegation.Balance); err != nil {
 				sublogger.Error().
 					Str("address", address).
 					Err(err).
