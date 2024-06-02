@@ -13,8 +13,8 @@ import (
 	querytypes "github.com/cosmos/cosmos-sdk/types/query"
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
+	stakingtypes "github.com/initia-labs/initia/x/mstaking/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
@@ -279,7 +279,7 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 			Msg("Finished querying validator delegations")
 
 		for _, delegation := range stakingRes.DelegationResponses {
-			value, err := strconv.ParseFloat(delegation.Balance.Amount.String(), 64)
+			value, err := strconv.ParseFloat(delegation.Balance.AmountOf(Denom).String(), 64)
 			if err != nil {
 				log.Error().
 					Err(err).
@@ -517,7 +517,7 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 		slashingClient := slashingtypes.NewQueryClient(grpcConn)
 		slashingRes, err := slashingClient.SigningInfo(
 			context.Background(),
-			&slashingtypes.QuerySigningInfoRequest{ConsAddress: string(pubKey)},
+			&slashingtypes.QuerySigningInfoRequest{ConsAddress: pubKey.String()},
 		)
 		if err != nil {
 			sublogger.Error().

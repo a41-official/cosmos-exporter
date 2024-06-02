@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"math/big"
 	"net/http"
 	"sort"
 	"strconv"
@@ -11,8 +12,8 @@ import (
 	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 	querytypes "github.com/cosmos/cosmos-sdk/types/query"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/google/uuid"
+	stakingtypes "github.com/initia-labs/initia/x/mstaking/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
@@ -158,7 +159,22 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 			} else if validators[i].IsBonded() && !validators[j].IsBonded() {
 				return true
 			}
-			return validators[i].DelegatorShares.BigInt().Cmp(validators[j].DelegatorShares.BigInt()) > 0
+
+			prevDelegatorShare := (*big.Int)(nil)
+			for _, delegatorShare := range validators[j].DelegatorShares {
+				if delegatorShare.Denom == Denom {
+					prevDelegatorShare = delegatorShare.Amount.BigInt()
+					break
+				}
+			}
+
+			for _, delegatorShare := range validators[i].DelegatorShares {
+				if delegatorShare.Denom == Denom {
+					return delegatorShare.Amount.BigInt().Cmp(prevDelegatorShare) > 0
+				}
+			}
+
+			return false
 		})
 	}()
 
@@ -283,18 +299,18 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		}
 
 		// because cosmos's dec doesn't have .toFloat64() method or whatever and returns everything as int
-		if value, err := strconv.ParseFloat(validator.MinSelfDelegation.String(), 64); err != nil {
-			sublogger.Error().
-				Str("address", validator.OperatorAddress).
-				Err(err).
-				Msg("Could not parse validator min self delegation")
-		} else {
-			validatorsMinSelfDelegationGauge.With(prometheus.Labels{
-				"address": validator.OperatorAddress,
-				"moniker": validator.Description.Moniker,
-				"denom":   Denom,
-			}).Set(value / DenomCoefficient)
-		}
+		// if value, err := strconv.ParseFloat(validator.MinSelfDelegation.String(), 64); err != nil {
+		// 	sublogger.Error().
+		// 		Str("address", validator.OperatorAddress).
+		// 		Err(err).
+		// 		Msg("Could not parse validator min self delegation")
+		// } else {
+		// 	validatorsMinSelfDelegationGauge.With(prometheus.Labels{
+		// 		"address": validator.OperatorAddress,
+		// 		"moniker": validator.Description.Moniker,
+		// 		"denom":   Denom,
+		// 	}).Set(value / DenomCoefficient)
+		// }
 
 		err = validator.UnpackInterfaces(interfaceRegistry) // Unpack interfaces, to populate the Anys' cached values
 		if err != nil {
@@ -316,7 +332,7 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		found := false
 
 		for _, signingInfoIterated := range signingInfos {
-			if string(pubKey) == signingInfoIterated.Address {
+			if pubKey.String() == signingInfoIterated.Address {
 				found = true
 				signingInfo = signingInfoIterated
 				break
