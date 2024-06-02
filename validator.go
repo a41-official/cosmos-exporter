@@ -517,7 +517,7 @@ func ValidatorHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cli
 		slashingClient := slashingtypes.NewQueryClient(grpcConn)
 		slashingRes, err := slashingClient.SigningInfo(
 			context.Background(),
-			&slashingtypes.QuerySigningInfoRequest{ConsAddress: pubKey.String()},
+			&slashingtypes.QuerySigningInfoRequest{ConsAddress: string(pubKey)},
 		)
 		if err != nil {
 			sublogger.Error().

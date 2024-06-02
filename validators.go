@@ -316,7 +316,7 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 		found := false
 
 		for _, signingInfoIterated := range signingInfos {
-			if pubKey.String() == signingInfoIterated.Address {
+			if string(pubKey) == signingInfoIterated.Address {
 				found = true
 				signingInfo = signingInfoIterated
 				break
