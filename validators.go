@@ -168,6 +168,10 @@ func ValidatorsHandler(w http.ResponseWriter, r *http.Request, grpcConn *grpc.Cl
 				}
 			}
 
+			if prevDelegatorShare == nil {
+				return true
+			}
+
 			for _, delegatorShare := range validators[i].DelegatorShares {
 				if delegatorShare.Denom == Denom {
 					return delegatorShare.Amount.BigInt().Cmp(prevDelegatorShare) > 0
